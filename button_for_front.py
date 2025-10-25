@@ -12,9 +12,94 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 import tempfile
 import shutil
+import hashlib
 
 # Импортируем настройки базы данных
 from database_remote import get_db, DatabaseManager, session
+
+def hash_password(password: str) -> str:
+    """
+    Хеширует пароль с использованием SHA-256
+    
+    Args:
+        password: Пароль в открытом виде
+    
+    Returns:
+        Хешированный пароль
+    """
+    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+
+def register_user(first_name: str, last_name: str, phone_number: str, password: str) -> Dict[str, Any]:
+    """
+    Регистрирует нового пользователя в системе
+    
+    Args:
+        first_name: Имя пользователя
+        last_name: Фамилия пользователя
+        phone_number: Номер телефона
+        password: Пароль в открытом виде (будет захеширован)
+    
+    Returns:
+        Dict с результатами регистрации
+    """
+    try:
+        # Подключаемся к базе данных
+        from database_remote import SessionLocal
+        db = SessionLocal()
+        db_manager = DatabaseManager(db)
+        
+        try:
+            # Проверяем, не существует ли уже пользователь с таким номером телефона
+            existing_users = db_manager.get_all_users()
+            for user in existing_users:
+                if user.phone_number == phone_number:
+                    return {
+                        "success": False,
+                        "error": f"Пользователь с номером телефона {phone_number} уже существует",
+                        "phone_number": phone_number
+                    }
+            
+            # Хешируем пароль
+            password_hash = hash_password(password)
+            
+            # Определяем следующий user_id
+            max_user_id = max([user.user_id for user in existing_users]) if existing_users else 0
+            next_user_id = max_user_id + 1
+            
+            # Создаем данные пользователя
+            user_data = {
+                "user_id": next_user_id,
+                "first_name": first_name,
+                "last_name": last_name,
+                "phone_number": phone_number,
+                "password_hash": password_hash
+            }
+            
+            # Сохраняем пользователя в базу данных
+            new_user = db_manager.create_user(user_data)
+            
+            return {
+                "success": True,
+                "message": f"Пользователь {first_name} {last_name} успешно зарегистрирован",
+                "user_id": new_user.user_id,
+                "first_name": new_user.first_name,
+                "last_name": new_user.last_name,
+                "phone_number": new_user.phone_number,
+                "registration_time": datetime.now().isoformat()
+            }
+            
+        finally:
+            # Закрываем соединение с БД
+            db.close()
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "first_name": first_name,
+            "last_name": last_name,
+            "phone_number": phone_number
+        }
 
 def upload_client_file(file_path: str, user_id: int = 1) -> Dict[str, Any]:
     """
@@ -366,14 +451,33 @@ def process_client_file_complete(file_path: str, user_id: int = 1) -> Dict[str, 
 
 # Пример использования
 if __name__ == "__main__":
-    '''# Тестируем функции
-    test_file = "Книга1.csv"  # Тестовый CSV файл
+
+    '''# Тестируем регистрацию пользователя
+    print("\n=== Тестирование регистрации пользователя ===")
+    registration_result = register_user(
+        first_name="Bbf",
+        last_name="Иванов",
+        phone_number="+790fjjnf784567",
+        password="fjjfjf"
+    )
+
+    if registration_result.get("success"):
+        print(
+            f"✅ Пользователь зарегистрирован: ID {registration_result['user_id']}, Имя {registration_result['first_name']} {registration_result['last_name']}")
+    else:
+        print(f"❌ Ошибка регистрации: {registration_result.get('error')}")'''
+
+
+
+
+    # Тестируем функции
+    test_file = "Книга1.xlsx"  # Тестовый CSV файл
     
     if os.path.exists(test_file):
         print("=== Тестирование обработки файла ===")
         
         # Полная обработка
-        result = process_client_file_complete(test_file, user_id=4)
+        result = process_client_file_complete(test_file, user_id=3)
         
         if result["success"]:
             print(f"✅ Успешно обработано: {result['total_processed']} записей")
@@ -385,8 +489,10 @@ if __name__ == "__main__":
         else:
             print(f"❌ Ошибка: {result['error']}")
     else:
-        print("Файл для тестирования не найден")'''
+        print("Файл для тестирования не найден")
+
     
+    '''
     # Тестируем функцию удаления
     print("\n=== Тестирование удаления записей пользователя ===")
     delete_result = delete_user_locations(user_id=2)
@@ -400,3 +506,4 @@ if __name__ == "__main__":
                 print(f"  - ID: {loc['location_id']}, Original: {loc['original_id']}, Адрес: {loc['address']}")
     else:
         print(f"❌ Ошибка удаления: {delete_result['error']}")
+'''
