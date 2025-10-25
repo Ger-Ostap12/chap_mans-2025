@@ -252,6 +252,67 @@ def process_json_to_locations(json_file_path: str, user_id: int = 1) -> Dict[str
             "json_file": json_file_path
         }
 
+def delete_user_locations(user_id: int) -> Dict[str, Any]:
+    """
+    Удаляет все записи локаций для указанного пользователя
+    
+    Args:
+        user_id: ID пользователя, чьи записи нужно удалить
+    
+    Returns:
+        Dict с результатами удаления
+    """
+    try:
+        # Подключаемся к базе данных
+        from database_remote import SessionLocal
+        db = SessionLocal()
+        db_manager = DatabaseManager(db)
+        
+        try:
+            # Получаем все локации пользователя перед удалением
+            user_locations = db_manager.get_locations_by_user(user_id)
+            locations_count = len(user_locations)
+            
+            if locations_count == 0:
+                return {
+                    "success": True,
+                    "message": f"У пользователя {user_id} нет записей для удаления",
+                    "deleted_count": 0,
+                    "user_id": user_id
+                }
+            
+            # Удаляем все локации пользователя
+            deleted_locations = []
+            for location in user_locations:
+                deleted_location = db_manager.delete_location(location.location_id)
+                if deleted_location:
+                    deleted_locations.append({
+                        "location_id": deleted_location.location_id,
+                        "original_id": deleted_location.original_id,
+                        "address": deleted_location.address,
+                        "client_level": deleted_location.client_level
+                    })
+            
+            return {
+                "success": True,
+                "message": f"Успешно удалено {len(deleted_locations)} записей для пользователя {user_id}",
+                "deleted_count": len(deleted_locations),
+                "user_id": user_id,
+                "deleted_locations": deleted_locations,
+                "deletion_time": datetime.now().isoformat()
+            }
+            
+        finally:
+            # Закрываем соединение с БД
+            db.close()
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "user_id": user_id
+        }
+
 def process_client_file_complete(file_path: str, user_id: int = 1) -> Dict[str, Any]:
     """
     Полный процесс обработки файла клиентов: загрузка -> JSON -> БД
@@ -305,14 +366,14 @@ def process_client_file_complete(file_path: str, user_id: int = 1) -> Dict[str, 
 
 # Пример использования
 if __name__ == "__main__":
-    # Тестируем функции
-    test_file = "Книга2.xlsx"  # Свежий тестовый CSV файл с ID 200+
+    '''# Тестируем функции
+    test_file = "Книга1.csv"  # Тестовый CSV файл
     
     if os.path.exists(test_file):
         print("=== Тестирование обработки файла ===")
         
         # Полная обработка
-        result = process_client_file_complete(test_file, user_id=3)
+        result = process_client_file_complete(test_file, user_id=4)
         
         if result["success"]:
             print(f"✅ Успешно обработано: {result['total_processed']} записей")
@@ -324,4 +385,18 @@ if __name__ == "__main__":
         else:
             print(f"❌ Ошибка: {result['error']}")
     else:
-        print("Файл для тестирования не найден")
+        print("Файл для тестирования не найден")'''
+    
+    # Тестируем функцию удаления
+    print("\n=== Тестирование удаления записей пользователя ===")
+    delete_result = delete_user_locations(user_id=2)
+    
+    if delete_result["success"]:
+        print(f"✅ {delete_result['message']}")
+        print(f"🗑️ Удалено записей: {delete_result['deleted_count']}")
+        if delete_result['deleted_count'] > 0:
+            print("Удаленные записи:")
+            for loc in delete_result['deleted_locations']:
+                print(f"  - ID: {loc['location_id']}, Original: {loc['original_id']}, Адрес: {loc['address']}")
+    else:
+        print(f"❌ Ошибка удаления: {delete_result['error']}")
