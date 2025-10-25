@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, JSON, text, DECIMAL, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
 from datetime import datetime
 import json
@@ -7,7 +7,7 @@ import os
 import time
 
 
-DATABASE_URL = "postgresql+psycopg2://nikitaurovsky:password123@10.165.5.133:5432/hack_chapmani"
+DATABASE_URL = "postgresql+psycopg2://nikitaurovsky:password123@localhost:5432/hack_chapmani"
 
 
 # Создаем движок базы данных с дополнительными настройками
@@ -50,11 +50,20 @@ class User(Base):
 class Locations(Base):
     __tablename__ = "locations"
 
-    location_id = Column(Integer, primary_key=True)
+    location_id = Column(Integer, primary_key=True, autoincrement=True)  # Автогенерируемый ID
+    original_id = Column(Integer, nullable=False)  # Исходный ID из файла
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
     is_active = Column(Boolean, nullable=False, default=False)
     latitude = Column(DECIMAL(10, 8), nullable=False)
     longitude = Column(DECIMAL(11, 8), nullable=False)
+    
+    # Новые поля из Excel файла
+    address = Column(String, nullable=False)  # Адрес объекта
+    work_start = Column(String, nullable=False)  # Время начала рабочего дня
+    work_end = Column(String, nullable=False)  # Время окончания рабочего дня
+    lunch_start = Column(String, nullable=False)  # Время начала обеда
+    lunch_end = Column(String, nullable=False)  # Время окончания обеда
+    client_level = Column(String, nullable=False, default="Standart")  # Уровень клиента (VIP/Standart)
 
     user = relationship("User", back_populates="locations")
 
