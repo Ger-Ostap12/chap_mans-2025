@@ -337,6 +337,140 @@ def process_json_to_locations(json_file_path: str, user_id: int = 1) -> Dict[str
             "json_file": json_file_path
         }
 
+def mark_location_visited(user_id: int, location_id: int) -> Dict[str, Any]:
+    """
+    Отмечает, что пользователь посетил указанную локацию
+    
+    Args:
+        user_id: ID пользователя
+        location_id: ID локации для отметки
+    
+    Returns:
+        Dict с результатами отметки
+    """
+    try:
+        # Подключаемся к базе данных
+        from database_remote import SessionLocal
+        db = SessionLocal()
+        db_manager = DatabaseManager(db)
+        
+        try:
+            # Проверяем, что локация принадлежит данному пользователю
+            user_locations = db_manager.get_locations_by_user(user_id)
+            target_location = None
+            
+            for location in user_locations:
+                if location.location_id == location_id:
+                    target_location = location
+                    break
+            
+            if not target_location:
+                return {
+                    "success": False,
+                    "error": f"Локация с ID {location_id} не найдена для пользователя {user_id}",
+                    "user_id": user_id,
+                    "location_id": location_id
+                }
+            
+            # Сохраняем исходный статус
+            original_status = target_location.is_active
+            
+            # Определяем новый статус (переключаем: True -> False, False -> True)
+            new_status = not original_status
+            
+            # Обновляем статус локации
+            updated_location = db_manager.update_location_status(location_id, new_status)
+            
+            if updated_location:
+                status_text = "отмечена как посещенная" if new_status else "отмечена как не посещенная"
+                return {
+                    "success": True,
+                    "message": f"Локация {updated_location.address} {status_text}",
+                    "user_id": user_id,
+                    "location_id": location_id,
+                    "address": updated_location.address,
+                    "is_active": updated_location.is_active,
+                    "previous_status": original_status,
+                    "new_status": new_status,
+                    "action_time": datetime.now().isoformat()
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": "Не удалось обновить статус локации",
+                    "user_id": user_id,
+                    "location_id": location_id
+                }
+            
+        finally:
+            # Закрываем соединение с БД
+            db.close()
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "user_id": user_id,
+            "location_id": location_id
+        }
+
+def get_user_available_locations(user_id: int) -> Dict[str, Any]:
+    """
+    Получает список всех доступных локаций для пользователя
+    
+    Args:
+        user_id: ID пользователя
+    
+    Returns:
+        Dict со списком локаций пользователя
+    """
+    try:
+        # Подключаемся к базе данных
+        from database_remote import SessionLocal
+        db = SessionLocal()
+        db_manager = DatabaseManager(db)
+        
+        try:
+            # Получаем все локации пользователя
+            user_locations = db_manager.get_locations_by_user(user_id)
+            
+            locations_list = []
+            for location in user_locations:
+                locations_list.append({
+                    "location_id": location.location_id,
+                    "original_id": location.original_id,
+                    "address": location.address,
+                    "latitude": float(location.latitude),
+                    "longitude": float(location.longitude),
+                    "is_active": location.is_active,
+                    "work_start": location.work_start,
+                    "work_end": location.work_end,
+                    "lunch_start": location.lunch_start,
+                    "lunch_end": location.lunch_end,
+                    "client_level": location.client_level
+                })
+            
+            return {
+                "success": True,
+                "user_id": user_id,
+                "total_locations": len(locations_list),
+                "visited_locations": len([loc for loc in locations_list if loc["is_active"]]),
+                "available_locations": len([loc for loc in locations_list if not loc["is_active"]]),
+                "locations": locations_list,
+                "query_time": datetime.now().isoformat()
+            }
+            
+        finally:
+            # Закрываем соединение с БД
+            db.close()
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "user_id": user_id
+        }
+
 def delete_user_locations(user_id: int) -> Dict[str, Any]:
     """
     Удаляет все записи локаций для указанного пользователя
@@ -451,6 +585,58 @@ def process_client_file_complete(file_path: str, user_id: int = 1) -> Dict[str, 
 
 # Пример использования
 if __name__ == "__main__":
+    
+    # Тестируем получение доступных локаций для пользователя
+    print("\n=== Тестирование получения локаций пользователя ===")
+    locations_result = get_user_available_locations(user_id=1)
+    
+    if locations_result.get("success"):
+        print(f"✅ Найдено локаций: {locations_result['total_locations']}")
+        print(f"📍 Посещено: {locations_result['visited_locations']}")
+        print(f"🎯 Доступно для посещения: {locations_result['available_locations']}")
+        
+        if locations_result['locations']:
+            print("\nСписок локаций:")
+            for loc in locations_result['locations'][:3]:  # Показываем первые 3
+                status = "✅ Посещена" if loc['is_active'] else "⏳ Доступна"
+                print(f"  - ID: {loc['location_id']}, Адрес: {loc['address']}, Статус: {status}")
+    else:
+        print(f"❌ Ошибка получения локаций: {locations_result.get('error')}")
+    
+    # Тестируем отметку посещения локации
+    if locations_result.get("success") and locations_result['available_locations'] > 0:
+        print("\n=== Тестирование отметки посещения локации ===")
+        
+        # Находим первую доступную локацию
+        available_location = None
+        for loc in locations_result['locations']:
+            if not loc['is_active']:
+                available_location = loc
+                break
+        
+        if available_location:
+            visit_result = mark_location_visited(
+                user_id=1,
+                location_id=available_location['location_id']
+            )
+            
+            if visit_result.get("success"):
+                print(f"✅ {visit_result['message']}")
+                print(f"📍 Адрес: {visit_result['address']}")
+                print(f"🕐 Время действия: {visit_result['action_time']}")
+                print(f"📊 Статус: {'Посещена' if visit_result['is_active'] else 'Не посещена'}")
+            else:
+                print(f"❌ Ошибка отметки посещения: {visit_result.get('error')}")
+        else:
+            print("ℹ️ Нет доступных локаций для отметки посещения")
+    
+    # Повторно проверяем статус локаций после отметки
+    print("\n=== Проверка статуса после отметки ===")
+    updated_locations = get_user_available_locations(user_id=1)
+    if updated_locations.get("success"):
+        print(f"✅ Обновленная статистика:")
+        print(f"📍 Посещено: {updated_locations['visited_locations']}")
+        print(f"🎯 Доступно для посещения: {updated_locations['available_locations']}")
 
     '''# Тестируем регистрацию пользователя
     print("\n=== Тестирование регистрации пользователя ===")
@@ -467,9 +653,7 @@ if __name__ == "__main__":
     else:
         print(f"❌ Ошибка регистрации: {registration_result.get('error')}")'''
 
-
-
-
+    '''
     # Тестируем функции
     test_file = "Книга1.xlsx"  # Тестовый CSV файл
     
@@ -490,7 +674,7 @@ if __name__ == "__main__":
             print(f"❌ Ошибка: {result['error']}")
     else:
         print("Файл для тестирования не найден")
-
+    '''
     
     '''
     # Тестируем функцию удаления
