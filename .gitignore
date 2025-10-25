@@ -1,0 +1,11 @@
+# Датасеты для обучения
+DS/
+
+# Сгенерированные данные
+combined_training_data.csv
+
+# Логи
+*.log
+
+# Кэш Python
+__pycache__/
