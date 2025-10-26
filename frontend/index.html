@@ -142,7 +142,7 @@
                     <!-- Таблица -->
                     <div class="table-block">
                         <div class="d-flex gap-4 mb-3">
-                            <select class="form-select border-success text-success">
+                            <select id="daySelect" class="form-select border-success text-success">
                                 <option selected>Выбрать день</option>
                                 <option value="1">1 день</option>
                                 <option value="2">2 день</option>
@@ -306,6 +306,50 @@
     </div>
 
     <script src="/static/js/main.js"></script>
+    
+    <script>
+        // Связь между "Выбрать период" и "Выбрать день"
+        document.addEventListener('DOMContentLoaded', function() {
+            const periodSelect = document.getElementById('periodSelect');
+            const daySelect = document.getElementById('daySelect');
+            
+            console.log('Period select found:', periodSelect);
+            console.log('Day select found:', daySelect);
+            
+            // Функция обновления опций дня
+            function updateDayOptions() {
+                console.log('Updating day options...');
+                const selectedPeriod = periodSelect.value;
+                console.log('Selected period:', selectedPeriod);
+                
+                // Очищаем существующие опции кроме первой
+                daySelect.innerHTML = '<option selected>Выбрать день</option>';
+                
+                if (selectedPeriod && selectedPeriod !== 'Выбрать период') {
+                    // Извлекаем количество дней из значения периода (например, "3_day" -> 3)
+                    const days = parseInt(selectedPeriod.split('_')[0]);
+                    console.log('Number of days:', days);
+                    
+                    // Добавляем опции для каждого дня
+                    for (let i = 1; i <= days; i++) {
+                        const option = document.createElement('option');
+                        option.value = i;
+                        option.textContent = `${i} день`;
+                        daySelect.appendChild(option);
+                        console.log('Added option:', i, 'день');
+                    }
+                }
+            }
+            
+            // Обработчик изменения периода
+            if (periodSelect) {
+                periodSelect.addEventListener('change', updateDayOptions);
+                console.log('Event listener added to period select');
+            } else {
+                console.error('Period select not found!');
+            }
+        });
+    </script>
 
 </body>
 
