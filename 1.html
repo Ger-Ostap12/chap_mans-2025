@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<title>Ежедневный отчет - Route.Invest</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #F5F5F5;
+    color: #2E7D32;
+    line-height: 1.6;
+  }
+  
+  .header {
+    background-color: #2E7D32;
+    color: white;
+    padding: 20px 0;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .header h1 {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  
+  .header .subtitle {
+    font-size: 16px;
+    font-weight: 300;
+    opacity: 0.9;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 30px 20px;
+  }
+  
+  .section {
+    background-color: white;
+    margin-bottom: 30px;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-left: 4px solid #4CAF50;
+  }
+  
+  .section h2 {
+    color: #1B5E20;
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #E8F5E9;
+    padding-bottom: 10px;
+  }
+  
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .metric-card {
+    background-color: #F1F8E9;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid #C8E6C9;
+  }
+  
+  .metric-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: #2E7D32;
+    margin-bottom: 5px;
+  }
+  
+  .metric-label {
+    font-size: 14px;
+    color: #4CAF50;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  
+  th {
+    background-color: #4CAF50;
+    color: white;
+    padding: 15px 12px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  td {
+    padding: 12px;
+    border-bottom: 1px solid #E8F5E9;
+    font-size: 14px;
+  }
+  
+  tr:nth-child(even) {
+    background-color: #F9F9F9;
+  }
+  
+  tr:hover {
+    background-color: #E8F5E9;
+  }
+  
+  .status-visited {
+    color: #4CAF50;
+    font-weight: bold;
+  }
+  
+  .status-not-visited {
+    color: #EF5350;
+    font-weight: bold;
+  }
+  
+  .vip-badge {
+    background-color: #FF9800;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+  }
+  
+  .progress-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #E8F5E9;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background-color: #4CAF50;
+    transition: width 0.3s ease;
+  }
+  
+  .highlight-number {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2E7D32;
+  }
+  
+  .footer {
+    background-color: #2E7D32;
+    color: white;
+    padding: 20px 0;
+    text-align: center;
+    margin-top: 40px;
+  }
+  
+  .footer-text {
+    font-size: 14px;
+    opacity: 0.8;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Route.Invest</h1>
+    <div class="subtitle">Ежедневный отчет — умная аналитика маршрутов</div>
+  </div>
+
+  <div class="container">
+    <div class="section">
+      <h2>📊 Общая статистика дня</h2>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-value">150</div>
+          <div class="metric-label">Всего посещений</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">30</div>
+          <div class="metric-label">VIP клиентов</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">45.3</div>
+          <div class="metric-label">Километров</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">87%</div>
+          <div class="metric-label">Выполнение плана</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📍 Адреса посещенных и не посещённых</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Адрес</th>
+            <th>VIP</th>
+            <th>ETA</th>
+            <th>Статус</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>ул. Ленина, 10</td>
+            <td><span class="vip-badge">Да</span></td>
+            <td>09:15</td>
+            <td><span class="status-visited">✅ Посещён</span></td>
+          </tr>
+          <tr>
+            <td>пр. Мира, 5</td>
+            <td>Нет</td>
+            <td>10:30</td>
+            <td><span class="status-not-visited">❌ Не посещён</span></td>
+          </tr>
+          <tr>
+            <td>ул. Советская, 22</td>
+            <td><span class="vip-badge">Да</span></td>
+            <td>11:45</td>
+            <td><span class="status-visited">✅ Посещён</span></td>
+          </tr>
+          <tr>
+            <td>ул. Гагарина, 7</td>
+            <td>Нет</td>
+            <td>13:20</td>
+            <td><span class="status-not-visited">❌ Не посещён</span></td>
+          </tr>
+          <tr>
+            <td>пр. Ворошиловский, 32</td>
+            <td><span class="vip-badge">Да</span></td>
+            <td>14:15</td>
+            <td><span class="status-visited">✅ Посещён</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>⏱️ Временные показатели</h2>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-value">8ч 15м</div>
+          <div class="metric-label">Общее время работы</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">1ч 30м</div>
+          <div class="metric-label">Время в пути</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">3.2м</div>
+          <div class="metric-label">Среднее время на клиента</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">18%</div>
+          <div class="metric-label">Время в пути от общего</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🎯 Эффективность маршрута</h2>
+      <div style="margin-bottom: 20px;">
+        <p><strong>Процент выполнения плана:</strong></p>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 87%;"></div>
+        </div>
+        <p style="text-align: center; margin-top: 10px;"><span class="highlight-number">87%</span></p>
+      </div>
+      
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-value">20%</div>
+          <div class="metric-label">VIP клиентов</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">3.3</div>
+          <div class="metric-label">Км/час средняя скорость</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">0.3</div>
+          <div class="metric-label">Км между клиентами</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">95%</div>
+          <div class="metric-label">Оптимальность маршрута</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📈 Дополнительная аналитика</h2>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-value">5</div>
+          <div class="metric-label">Районов охвачено</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">12.5</div>
+          <div class="metric-label">Км максимальный радиус</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">14:00</div>
+          <div class="metric-label">Пиковый час активности</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">92%</div>
+          <div class="metric-label">Соблюдение рабочих часов</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-text">
+      Route.Invest • Команда • Помощь • Хакатон 2025
+    </div>
+  </div>
+</body>
+</html>
