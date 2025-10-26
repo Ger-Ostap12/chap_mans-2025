@@ -7,6 +7,7 @@
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from contextlib import asynccontextmanager
@@ -20,6 +21,20 @@ from sqlalchemy.orm import Session
 
 # Импортируем настройки удаленной базы данных
 from database_remote import get_db, DatabaseManager, create_tables, test_connection
+
+# Импортируем функции из button_for_front.py
+from button_for_front import (
+    upload_client_file, 
+    convert_to_json, 
+    process_json_to_locations,
+    process_client_file_complete,
+    register_user,
+    find_user_by_phone,
+    get_user_available_locations,
+    mark_location_visited,
+    set_stay_period,
+    check_stay_period
+)
 
 # Функция для управления жизненным циклом приложения
 @asynccontextmanager
@@ -53,6 +68,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Монтирование статических файлов
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 # Модели данных (Pydantic)
 class AddressBase(BaseModel):
@@ -107,11 +125,35 @@ class ExportRequest(BaseModel):
     date_to: Optional[str] = None
     client_levels: Optional[List[str]] = None
 
+# Новые модели для работы с button_for_front.py
+class UserRegistration(BaseModel):
+    first_name: str
+    last_name: str
+    phone_number: str
+    password: str
+
+class UserLogin(BaseModel):
+    phone_number: str
+    password: str
+
+class LocationVisit(BaseModel):
+    user_id: int
+    location_id: int
+
+class StayPeriodRequest(BaseModel):
+    user_id: int
+    days: int
+
 
 # Базовые эндпоинты
 @app.get("/")
 async def root():
-    """Корневой эндпоинт"""
+    """Главная страница фронтенда"""
+    return FileResponse("frontend/index.html")
+
+@app.get("/api")
+async def api_root():
+    """API корневой эндпоинт"""
     return {
         "message": "Добро пожаловать в GeoData API - Объединенная версия!",
         "version": "3.0.0",
@@ -306,22 +348,36 @@ async def upload_clients_file(file: UploadFile = File(...), db: Session = Depend
         elif file.filename.endswith('.json'):
             processed_data = process_json_file(file_path)
         
-        # Сохраняем информацию о файле в базу данных
+        # Сохраняем адреса в базу данных
         db_manager = DatabaseManager(db)
+        created_addresses = []
+        for address_data in processed_data:
+            try:
+                new_address = db_manager.create_address(address_data)
+                created_addresses.append(new_address)
+            except Exception as e:
+                print(f"Ошибка создания адреса: {e}")
+                continue
+        
+        # Сохраняем информацию о файле в базу данных
         file_info = {
             "file_id": file_id,
             "original_name": file.filename,
             "file_path": file_path,
             "upload_time": datetime.now(),
-            "records_count": len(processed_data),
+            "records_count": len(created_addresses),
             "status": "processed"
         }
-        db_manager.create_uploaded_file(file_info)
+        try:
+            db_manager.create_uploaded_file(file_info)
+        except Exception as e:
+            print(f"Ошибка сохранения информации о файле: {e}")
         
         return {
             "message": "Файл успешно загружен",
             "file_id": file_id,
-            "records_processed": len(processed_data),
+            "records_processed": len(created_addresses),
+            "created_addresses": created_addresses,
             "file_info": file_info
         }
         
@@ -657,6 +713,230 @@ async def export_report(
     
     else:
         raise HTTPException(status_code=400, detail="Поддерживаются только форматы: json, csv")
+
+# ===== НОВЫЕ ЭНДПОИНТЫ ДЛЯ РАБОТЫ С BUTTON_FOR_FRONT.PY =====
+
+@app.post("/api/upload-advanced")
+async def upload_advanced_file(file: UploadFile = File(...)):
+    """Расширенная загрузка файлов с поддержкой Excel и полной обработкой"""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Файл не выбран")
+    
+    # Проверяем расширение файла
+    if not file.filename.endswith(('.csv', '.json', '.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Поддерживаются только файлы CSV, JSON и Excel (.xlsx, .xls)")
+    
+    # Создаем папку для загруженных файлов
+    upload_dir = "uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Генерируем уникальное имя файла
+    file_id = str(uuid.uuid4())
+    file_extension = os.path.splitext(file.filename)[1]
+    file_path = os.path.join(upload_dir, f"{file_id}{file_extension}")
+    
+    try:
+        # Сохраняем файл
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Используем функцию из button_for_front.py для полной обработки
+        result = process_client_file_complete(file_path, user_id=1)
+        
+        # Удаляем временный файл
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        
+        if result["success"]:
+            return {
+                "message": "Файл успешно обработан и загружен в базу данных",
+                "file_id": file_id,
+                "total_processed": result["total_processed"],
+                "total_errors": result["total_errors"],
+                "errors": result.get("database_info", {}).get("errors", []),
+                "processing_time": datetime.now().isoformat()
+            }
+        else:
+            raise HTTPException(status_code=500, detail=f"Ошибка обработки файла: {result['error']}")
+            
+    except Exception as e:
+        # Удаляем файл в случае ошибки
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(status_code=500, detail=f"Ошибка обработки файла: {str(e)}")
+
+@app.post("/api/register")
+async def register_new_user(user_data: UserRegistration):
+    """Регистрация нового пользователя"""
+    try:
+        result = register_user(
+            first_name=user_data.first_name,
+            last_name=user_data.last_name,
+            phone_number=user_data.phone_number,
+            password=user_data.password
+        )
+        
+        if result["success"]:
+            return {
+                "message": result["message"],
+                "user_id": result["user_id"],
+                "first_name": result["first_name"],
+                "last_name": result["last_name"],
+                "registration_time": result["registration_time"]
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка регистрации: {str(e)}")
+
+@app.post("/api/login")
+async def login_user(login_data: UserLogin):
+    """Авторизация пользователя"""
+    try:
+        # Находим пользователя по номеру телефона
+        user = find_user_by_phone(login_data.phone_number)
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Проверяем пароль (простая проверка хеша)
+        import hashlib
+        password_hash = hashlib.sha256(login_data.password.encode('utf-8')).hexdigest()
+        
+        if user["password_hash"] != password_hash:
+            raise HTTPException(status_code=401, detail="Неверный пароль")
+        
+        return {
+            "message": "Успешная авторизация",
+            "user_id": user["user_id"],
+            "first_name": user["first_name"],
+            "last_name": user["last_name"],
+            "phone_number": user["phone_number"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка авторизации: {str(e)}")
+
+@app.get("/api/user/{user_id}/locations")
+async def get_user_locations(user_id: int):
+    """Получение локаций пользователя"""
+    try:
+        result = get_user_available_locations(user_id)
+        
+        if result["success"]:
+            return {
+                "user_id": result["user_id"],
+                "total_locations": result["total_locations"],
+                "visited_locations": result["visited_locations"],
+                "available_locations": result["available_locations"],
+                "locations": result["locations"],
+                "query_time": result["query_time"]
+            }
+        else:
+            raise HTTPException(status_code=404, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка получения локаций: {str(e)}")
+
+@app.post("/api/location/visit")
+async def mark_location_as_visited(visit_data: LocationVisit):
+    """Отметка посещения локации"""
+    try:
+        result = mark_location_visited(visit_data.user_id, visit_data.location_id)
+        
+        if result["success"]:
+            return {
+                "message": result["message"],
+                "user_id": result["user_id"],
+                "location_id": result["location_id"],
+                "address": result["address"],
+                "is_active": result["is_active"],
+                "action_time": result["action_time"]
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка отметки посещения: {str(e)}")
+
+@app.post("/api/stay-period")
+async def set_user_stay_period(stay_data: StayPeriodRequest):
+    """Установка периода пребывания пользователя"""
+    try:
+        result = set_stay_period(stay_data.user_id, stay_data.days)
+        
+        if result["success"]:
+            return {
+                "message": result["message"],
+                "user_id": result["user_id"],
+                "stay_days": result["stay_days"],
+                "start_date": result["start_date"],
+                "end_date": result["end_date"],
+                "expires_in_hours": result["expires_in_hours"]
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка установки периода: {str(e)}")
+
+@app.get("/api/stay-period/{user_id}")
+async def get_user_stay_period(user_id: int):
+    """Получение информации о периоде пребывания пользователя"""
+    try:
+        result = check_stay_period(user_id)
+        
+        if result["success"]:
+            return {
+                "user_id": result["user_id"],
+                "current_day": result["current_day"],
+                "total_days": result["total_days"],
+                "days_remaining": result["days_remaining"],
+                "start_date": result["start_date"],
+                "end_date": result["end_date"],
+                "is_active": result["is_active"]
+            }
+        else:
+            return {
+                "success": False,
+                "error": result["error"],
+                "user_id": user_id
+            }
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка получения периода: {str(e)}")
+
+@app.delete("/api/user/{user_id}/locations")
+async def delete_user_locations_endpoint(user_id: int):
+    """Удаление всех локаций пользователя"""
+    try:
+        from button_for_front import delete_user_locations
+        result = delete_user_locations(user_id)
+        
+        if result["success"]:
+            return {
+                "success": True,
+                "message": result["message"],
+                "deleted_count": result["deleted_count"],
+                "user_id": result["user_id"],
+                "deletion_time": result["deletion_time"]
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка удаления локаций: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
