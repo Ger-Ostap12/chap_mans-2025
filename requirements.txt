@@ -3,5 +3,16 @@ torch>=2.0.0
 numpy>=1.24.0
 pandas>=2.0.0
 
+# Graph Neural Networks для интегрированной системы
+torch-geometric>=2.3.0
+torch-scatter>=2.1.0
+torch-sparse>=0.6.17
+torch-cluster>=1.6.1
+
 # Для парсинга данных
 requests>=2.25.0
+
+# Для анализа трафика
+redis>=4.0.0
+matplotlib>=3.5.0
+seaborn>=0.11.0

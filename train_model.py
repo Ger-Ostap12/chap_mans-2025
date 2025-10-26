@@ -223,7 +223,7 @@ class AttentionRouteOptimizer(nn.Module):
     Attention-based Neural Network для оптимизации маршрутов
     """
 
-    def __init__(self, input_dim: int = 7, hidden_dim: int = 256, num_heads: int = 8, num_layers: int = 3):
+    def __init__(self, input_dim: int = 14, hidden_dim: int = 256, num_heads: int = 8, num_layers: int = 3):
         super().__init__()
 
         self.hidden_dim = hidden_dim

@@ -1,11 +1,81 @@
-# Датасеты для обучения
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Model files
+*.pth
+*.pkl
+*.joblib
+best_unified_model.pth
+combined_training_data.csv
+taxi_trip_data.csv
+taxi_zone_geo.csv
+
+# API keys and secrets
+.env
+*.key
+secrets.json
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test outputs
+test_outputs/
+frontend_routes.json
+
+# Вложенные репозитории
+chap_mans-2025/
 DS/
 
-# Сгенерированные данные
-combined_training_data.csv
-
-# Логи
-*.log
-
-# Кэш Python
-__pycache__/
+# Временные файлы
+*.tmp
+*.temp
+temp/
+tmp/
